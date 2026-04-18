@@ -38,7 +38,7 @@ export default function TripSummary({ trip }) {
       <h3 className="text-lg font-bold text-gray-900 mb-1">Trip Plan</h3>
       <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500 mb-5">
         <span>{trip.total_distance_miles?.toFixed(0)} miles total</span>
-        <span>{fmtDuration(trip.total_duration_hours)} driving time</span>
+        <span>{fmtDuration(trip.total_duration_hours)} est. route time</span>
         {trip.estimated_arrival && (
           <span>ETA: {fmt(trip.estimated_arrival)}</span>
         )}
