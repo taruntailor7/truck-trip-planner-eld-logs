@@ -91,7 +91,7 @@ export default function DashboardPage() {
         <div className="bg-white rounded-2xl shadow border border-gray-100 p-6">
           <h3 className="text-lg font-bold text-gray-900 mb-1">ELD Daily Logs <span className="text-sm font-normal text-gray-400">(Electronic Logging Device)</span></h3>
           <p className="text-sm text-gray-500 mb-4">{logs.total_days} day{logs.total_days > 1 ? 's' : ''} of logs generated</p>
-          <ELDLogViewer logs={logs.logs} />
+          <ELDLogViewer logs={logs.logs} trip={trip} />
         </div>
       )}
     </div>
