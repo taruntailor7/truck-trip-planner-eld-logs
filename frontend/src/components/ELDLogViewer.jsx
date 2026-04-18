@@ -1,13 +1,12 @@
 import { useState } from 'react'
 
+/* ─── Shared constants ─── */
 const STATUSES = [
-  { key: 'OFF_DUTY',       label: '1. Off Duty',              short: 'OFF', color: '#6b7280', num: 1 },
-  { key: 'SLEEPER_BERTH',  label: '2. Sleeper Berth',         short: 'SB',  color: '#6366f1', num: 2 },
-  { key: 'DRIVING',        label: '3. Driving',               short: 'D',   color: '#16a34a', num: 3 },
-  { key: 'ON_DUTY',        label: '4. On Duty (Not Driving)', short: 'ON',  color: '#f59e0b', num: 4 },
+  { key: 'OFF_DUTY',      label: 'Off Duty',              short: 'OFF', color: '#6b7280', accent: 'bg-gray-100  text-gray-700  border-gray-200' },
+  { key: 'SLEEPER_BERTH', label: 'Sleeper Berth',         short: 'SB',  color: '#6366f1', accent: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  { key: 'DRIVING',       label: 'Driving',               short: 'D',   color: '#16a34a', accent: 'bg-green-50  text-green-700  border-green-200' },
+  { key: 'ON_DUTY',       label: 'On Duty (Not Driving)', short: 'ON',  color: '#f59e0b', accent: 'bg-amber-50  text-amber-700  border-amber-200' },
 ]
-
-const HOURS = Array.from({ length: 25 }, (_, i) => i)
 const STATUS_INDEX = Object.fromEntries(STATUSES.map((s, i) => [s.key, i]))
 
 function fmtDur(h) {
@@ -26,8 +25,25 @@ function fmtDurShort(h) {
   return `${hrs}h ${mins}m`
 }
 
+function fmtTimeFull(isoStr) {
+  if (!isoStr) return ''
+  const d = new Date(isoStr)
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+}
+
+function fmtTimeShort(isoStr) {
+  if (!isoStr) return ''
+  const d = new Date(isoStr)
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   Main Component
+   ════════════════════════════════════════════════════════════════ */
 export default function ELDLogViewer({ logs, trip }) {
   const [activeDay, setActiveDay] = useState(0)
+  const [viewMode, setViewMode] = useState('modern') // 'modern' | 'official'
 
   if (!logs || logs.length === 0) return null
 
@@ -40,16 +56,41 @@ export default function ELDLogViewer({ logs, trip }) {
   }), { driving: 0, onDuty: 0, sleeper: 0, offDuty: 0, miles: 0 })
 
   return (
-    <div className="space-y-6">
-      {/* Total trip summary */}
-      <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-        <h4 className="text-sm font-bold text-gray-700 mb-3">Trip Totals — {logs.length} Day{logs.length > 1 ? 's' : ''}</h4>
+    <div className="space-y-5">
+      {/* Trip summary */}
+      <div className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl p-4 border border-gray-200">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-sm font-bold text-gray-700">Trip Totals — {logs.length} Day{logs.length > 1 ? 's' : ''}</h4>
+          {/* View toggle */}
+          <div className="flex items-center bg-white border border-gray-200 rounded-lg p-0.5 shadow-sm">
+            <button
+              onClick={() => setViewMode('modern')}
+              className={`px-3 py-1 rounded-md text-xs font-medium transition cursor-pointer ${
+                viewMode === 'modern'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Modern View
+            </button>
+            <button
+              onClick={() => setViewMode('official')}
+              className={`px-3 py-1 rounded-md text-xs font-medium transition cursor-pointer ${
+                viewMode === 'official'
+                  ? 'bg-gray-800 text-white shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Standard Daily Log
+            </button>
+          </div>
+        </div>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm">
-          <div><span className="font-semibold text-green-700">{fmtDurShort(totals.driving)}</span> <span className="text-gray-500">Driving</span></div>
-          <div><span className="font-semibold text-amber-700">{fmtDurShort(totals.onDuty)}</span> <span className="text-gray-500">On Duty</span></div>
-          <div><span className="font-semibold text-indigo-700">{fmtDurShort(totals.sleeper)}</span> <span className="text-gray-500">Sleeper</span></div>
-          <div><span className="font-semibold text-gray-600">{fmtDurShort(totals.offDuty)}</span> <span className="text-gray-500">Off Duty</span></div>
-          <div><span className="font-semibold text-blue-700">{totals.miles.toFixed(0)} mi</span> <span className="text-gray-500">Total Miles</span></div>
+          <TripStat value={fmtDurShort(totals.driving)} label="Driving" color="text-green-700" />
+          <TripStat value={fmtDurShort(totals.onDuty)} label="On Duty" color="text-amber-700" />
+          <TripStat value={fmtDurShort(totals.sleeper)} label="Sleeper" color="text-indigo-700" />
+          <TripStat value={fmtDurShort(totals.offDuty)} label="Off Duty" color="text-gray-600" />
+          <TripStat value={`${totals.miles.toFixed(0)} mi`} label="Total Miles" color="text-blue-700" />
         </div>
       </div>
 
@@ -72,91 +113,87 @@ export default function ELDLogViewer({ logs, trip }) {
         </div>
       )}
 
-      {/* Official Log Sheet */}
-      <DailyLogSheet day={logs[activeDay]} trip={trip} />
+      {/* Conditional view */}
+      {viewMode === 'modern'
+        ? <ModernDayLog day={logs[activeDay]} />
+        : <OfficialDailyLog day={logs[activeDay]} />
+      }
+    </div>
+  )
+}
+
+function TripStat({ value, label, color }) {
+  return (
+    <div>
+      <span className={`font-semibold ${color}`}>{value}</span>{' '}
+      <span className="text-gray-500">{label}</span>
     </div>
   )
 }
 
 
-function DailyLogSheet({ day, trip }) {
-  const totalHours = (day.total_driving_hours || 0) + (day.total_on_duty_hours || 0) +
-                     (day.total_sleeper_hours || 0) + (day.total_off_duty_hours || 0)
-
+/* ════════════════════════════════════════════════════════════════
+   MODERN VIEW (default) — colorful, interactive, easy to read
+   ════════════════════════════════════════════════════════════════ */
+function ModernDayLog({ day }) {
   return (
-    <div className="border-2 border-gray-800 rounded-lg overflow-hidden bg-white">
-      {/* Title bar */}
-      <div className="bg-gray-900 text-white px-4 py-2 flex items-center justify-between">
-        <span className="font-bold text-sm tracking-wide">DRIVER'S DAILY LOG</span>
-        <span className="text-xs text-gray-300">U.S. DOT / FMCSA — 49 CFR 395</span>
+    <div className="space-y-4">
+      {/* Day header */}
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-semibold text-gray-700">Day {day.day_number} — {day.log_date}</h4>
+        <span className="text-xs text-gray-400">{day.miles_driven?.toFixed(0)} miles driven</span>
       </div>
 
-      {/* Header fields */}
-      <div className="grid grid-cols-2 md:grid-cols-4 border-b border-gray-800">
-        <HeaderField label="Date" value={day.log_date} />
-        <HeaderField label="Day" value={`Day ${day.day_number}`} />
-        <HeaderField label="From" value={day.start_location || '—'} />
-        <HeaderField label="To" value={day.end_location || '—'} />
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 border-b border-gray-800">
-        <HeaderField label="Total Miles Driving" value={`${day.miles_driven?.toFixed(0) || 0}`} />
-        <HeaderField label="Carrier" value="Trip Planner ELD" />
-        <HeaderField label="Vehicle Number" value="—" />
-        <HeaderField label="24-Hour Period" value="Midnight to Midnight" />
+      {/* Stats cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StatCard label="Driving" value={fmtDurShort(day.total_driving_hours)} icon="🚛" color="text-green-700" bg="bg-green-50" border="border-green-100" />
+        <StatCard label="On Duty" value={fmtDurShort(day.total_on_duty_hours)} icon="📋" color="text-amber-700" bg="bg-amber-50" border="border-amber-100" />
+        <StatCard label="Sleeper Berth" value={fmtDurShort(day.total_sleeper_hours)} icon="🛏️" color="text-indigo-700" bg="bg-indigo-50" border="border-indigo-100" />
+        <StatCard label="Off Duty" value={fmtDurShort(day.total_off_duty_hours)} icon="☕" color="text-gray-700" bg="bg-gray-50" border="border-gray-100" />
       </div>
 
-      {/* The 24-hour graph */}
-      <div className="px-2 py-3 border-b border-gray-800">
-        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 px-1">Graph Grid — Record of Duty Status</p>
-        <div className="overflow-x-auto">
-          <OfficialGrid events={day.events || []} logDate={day.log_date} />
+      {/* Location bar */}
+      <div className="flex items-center justify-between text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-green-500" />
+          <span>{day.start_location}</span>
+        </div>
+        <div className="flex-1 mx-3 border-t border-dashed border-gray-300" />
+        <div className="flex items-center gap-1.5">
+          <span>{day.end_location}</span>
+          <span className="w-2 h-2 rounded-full bg-red-500" />
         </div>
       </div>
 
-      {/* Totals row */}
-      <div className="border-b border-gray-800">
-        <div className="grid grid-cols-5 text-center text-xs">
-          <TotalCell label="Off Duty" value={fmtDur(day.total_off_duty_hours)} color="text-gray-700" />
-          <TotalCell label="Sleeper Berth" value={fmtDur(day.total_sleeper_hours)} color="text-indigo-700" />
-          <TotalCell label="Driving" value={fmtDur(day.total_driving_hours)} color="text-green-700" />
-          <TotalCell label="On Duty" value={fmtDur(day.total_on_duty_hours)} color="text-amber-700" />
-          <TotalCell label="Total" value={fmtDur(totalHours)} color="text-gray-900" bold />
+      {/* Grid */}
+      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+        <ModernGrid events={day.events || []} logDate={day.log_date} />
+      </div>
+
+      {/* Timeline */}
+      <ModernTimeline events={day.events || []} />
+    </div>
+  )
+}
+
+function StatCard({ label, value, icon, color, bg, border }) {
+  return (
+    <div className={`rounded-xl p-3 ${bg} border ${border}`}>
+      <div className="flex items-center gap-2">
+        <span className="text-lg">{icon}</span>
+        <div>
+          <p className={`text-lg font-bold ${color}`}>{value}</p>
+          <p className="text-[11px] text-gray-500">{label}</p>
         </div>
       </div>
-
-      {/* Remarks / Events */}
-      <div className="px-4 py-3">
-        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Remarks / Activity Log</p>
-        <EventsTable events={day.events || []} />
-      </div>
     </div>
   )
 }
 
-
-function HeaderField({ label, value }) {
-  return (
-    <div className="px-3 py-1.5 border-r border-gray-300 last:border-r-0">
-      <p className="text-[10px] text-gray-500 uppercase tracking-wider">{label}</p>
-      <p className="text-sm font-semibold text-gray-900 truncate">{value}</p>
-    </div>
-  )
-}
-
-function TotalCell({ label, value, color, bold }) {
-  return (
-    <div className="py-2 border-r border-gray-300 last:border-r-0">
-      <p className="text-[10px] text-gray-500 uppercase">{label}</p>
-      <p className={`text-base ${bold ? 'font-black' : 'font-bold'} ${color}`}>{value}</p>
-    </div>
-  )
-}
-
-
-function OfficialGrid({ events, logDate }) {
+function ModernGrid({ events, logDate }) {
   const gridWidth = 960
   const rowHeight = 36
-  const labelWidth = 160
+  const labelWidth = 120
   const totalWidth = labelWidth + gridWidth
   const hourWidth = gridWidth / 24
 
@@ -166,116 +203,80 @@ function OfficialGrid({ events, logDate }) {
   function timeToX(isoStr) {
     const t = new Date(isoStr).getTime()
     const clamped = Math.max(dayStart, Math.min(dayEnd, t))
-    const frac = (clamped - dayStart) / (dayEnd - dayStart)
-    return labelWidth + frac * gridWidth
+    return labelWidth + ((clamped - dayStart) / (dayEnd - dayStart)) * gridWidth
   }
 
   const segments = events.map(ev => {
     const rowIdx = STATUS_INDEX[ev.status] ?? 0
-    const x1 = timeToX(ev.start_time)
-    const x2 = timeToX(ev.end_time)
-    return { ...ev, rowIdx, x1, x2 }
+    return { ...ev, rowIdx, x1: timeToX(ev.start_time), x2: timeToX(ev.end_time) }
   })
 
   const verticals = []
   for (let i = 1; i < segments.length; i++) {
-    const prev = segments[i - 1]
-    const cur = segments[i]
+    const prev = segments[i - 1], cur = segments[i]
     if (prev.rowIdx !== cur.rowIdx) {
-      const x = cur.x1
-      const yTop = Math.min(prev.rowIdx, cur.rowIdx) * rowHeight + rowHeight / 2
-      const yBot = Math.max(prev.rowIdx, cur.rowIdx) * rowHeight + rowHeight / 2
-      verticals.push({ x, yTop, yBot })
+      verticals.push({
+        x: cur.x1,
+        yTop: Math.min(prev.rowIdx, cur.rowIdx) * rowHeight + rowHeight / 2,
+        yBot: Math.max(prev.rowIdx, cur.rowIdx) * rowHeight + rowHeight / 2,
+      })
     }
   }
 
   const svgHeight = STATUSES.length * rowHeight
 
   return (
-    <svg
-      viewBox={`0 0 ${totalWidth} ${svgHeight + 28}`}
-      className="w-full min-w-[800px]"
-      style={{ fontFamily: 'system-ui, sans-serif' }}
-    >
-      {/* Background */}
-      <rect x={0} y={0} width={totalWidth} height={svgHeight} fill="#fafafa" />
+    <svg viewBox={`0 0 ${totalWidth} ${svgHeight + 26}`} className="w-full min-w-[700px]" style={{ fontFamily: 'system-ui, sans-serif' }}>
+      {/* Background + grid lines */}
+      <rect x={0} y={0} width={totalWidth} height={svgHeight} fill="#fafafa" rx={0} />
 
-      {/* Hour columns and labels */}
-      {HOURS.map(h => {
+      {/* Hour columns */}
+      {Array.from({ length: 25 }, (_, h) => {
         const x = labelWidth + h * hourWidth
         const isMajor = h % 6 === 0
         return (
           <g key={h}>
-            <line x1={x} y1={0} x2={x} y2={svgHeight} stroke={isMajor ? '#9ca3af' : '#e5e7eb'} strokeWidth={isMajor ? 1 : 0.5} />
-            {/* 15-min sub-ticks */}
-            {h < 24 && [1, 2, 3].map(q => {
-              const sx = x + (q / 4) * hourWidth
-              return <line key={q} x1={sx} y1={0} x2={sx} y2={svgHeight} stroke="#f3f4f6" strokeWidth={0.3} />
-            })}
+            <line x1={x} y1={0} x2={x} y2={svgHeight} stroke={isMajor ? '#d1d5db' : '#f3f4f6'} strokeWidth={isMajor ? 1 : 0.5} />
             {h < 24 && (
-              <text x={x + hourWidth / 2} y={svgHeight + 16} textAnchor="middle" fontSize="10" fontWeight={isMajor ? '700' : '400'} fill={isMajor ? '#374151' : '#9ca3af'}>
-                {h === 0 ? 'Mid' : h === 12 ? 'Noon' : h > 12 ? `${h - 12}` : `${h}`}
+              <text x={x + hourWidth / 2} y={svgHeight + 15} textAnchor="middle" fontSize="9" fontWeight={isMajor ? '700' : '400'} fill={isMajor ? '#374151' : '#9ca3af'}>
+                {h === 0 ? 'Mid' : h === 12 ? 'Noon' : h > 12 ? `${h - 12}p` : `${h}a`}
               </text>
             )}
-            {h === 0 && <text x={x + hourWidth / 2} y={svgHeight + 26} textAnchor="middle" fontSize="7" fill="#9ca3af">AM</text>}
-            {h === 12 && <text x={x + hourWidth / 2} y={svgHeight + 26} textAnchor="middle" fontSize="7" fill="#9ca3af">PM</text>}
           </g>
         )
       })}
 
-      {/* Row labels + horizontal lines */}
+      {/* Rows */}
       {STATUSES.map((s, i) => {
         const y = i * rowHeight
         return (
           <g key={s.key}>
-            <rect x={0} y={y} width={labelWidth} height={rowHeight} fill={i % 2 === 0 ? '#f9fafb' : '#ffffff'} />
-            <rect x={labelWidth} y={y} width={gridWidth} height={rowHeight} fill={i % 2 === 0 ? '#fafafa' : '#ffffff'} />
-            <line x1={0} y1={y + rowHeight} x2={totalWidth} y2={y + rowHeight} stroke="#d1d5db" strokeWidth={0.5} />
-
-            {/* Row number */}
-            <text x={12} y={y + rowHeight / 2 + 1} fontSize="12" fontWeight="800" fill={s.color} dominantBaseline="middle">
-              {s.num}.
-            </text>
-            {/* Row label */}
-            <text x={30} y={y + rowHeight / 2 + 1} fontSize="11" fontWeight="600" fill="#374151" dominantBaseline="middle">
-              {s.label.replace(/^\d+\.\s*/, '')}
+            <rect x={0} y={y} width={labelWidth} height={rowHeight} fill={i % 2 === 0 ? '#f9fafb' : '#fff'} />
+            <rect x={labelWidth} y={y} width={gridWidth} height={rowHeight} fill={i % 2 === 0 ? '#fafafa' : '#fff'} />
+            <line x1={0} y1={y + rowHeight} x2={totalWidth} y2={y + rowHeight} stroke="#e5e7eb" strokeWidth={0.5} />
+            {/* Color dot + label */}
+            <circle cx={14} cy={y + rowHeight / 2} r={4} fill={s.color} />
+            <text x={24} y={y + rowHeight / 2 + 1} fontSize="10" fontWeight="600" fill="#374151" dominantBaseline="middle">
+              {s.short} — {s.label.replace(/\(Not Driving\)/, '').trim()}
             </text>
           </g>
         )
       })}
 
-      {/* Border around grid area */}
-      <rect x={labelWidth} y={0} width={gridWidth} height={svgHeight} fill="none" stroke="#9ca3af" strokeWidth={1} />
+      {/* Border */}
+      <rect x={labelWidth} y={0} width={gridWidth} height={svgHeight} fill="none" stroke="#d1d5db" strokeWidth={1} />
 
       {/* Status bars */}
       {segments.map((seg, i) => {
         const y = seg.rowIdx * rowHeight
         const w = Math.max(seg.x2 - seg.x1, 1)
-        const statusCfg = STATUSES[seg.rowIdx]
+        const cfg = STATUSES[seg.rowIdx]
         return (
           <g key={i}>
-            {/* Horizontal line through the middle of the row */}
-            <line
-              x1={seg.x1}
-              y1={y + rowHeight / 2}
-              x2={seg.x1 + w}
-              y2={y + rowHeight / 2}
-              stroke={statusCfg.color}
-              strokeWidth={3}
-              strokeLinecap="round"
-            />
-            {/* Subtle fill behind */}
-            <rect
-              x={seg.x1}
-              y={y + 4}
-              width={w}
-              height={rowHeight - 8}
-              rx={2}
-              fill={statusCfg.color}
-              opacity={0.12}
-              style={{ cursor: 'pointer' }}
-            >
-              <title>{`${statusCfg.label}\n${fmtTimeFull(seg.start_time)} → ${fmtTimeFull(seg.end_time)}\nDuration: ${fmtDurShort(seg.duration_hours)}${seg.location ? `\nLocation: ${seg.location}` : ''}${seg.remarks ? `\n${seg.remarks}` : ''}`}</title>
+            <rect x={seg.x1} y={y + 5} width={w} height={rowHeight - 10} rx={4} fill={cfg.color} opacity={0.2} />
+            <line x1={seg.x1} y1={y + rowHeight / 2} x2={seg.x1 + w} y2={y + rowHeight / 2} stroke={cfg.color} strokeWidth={3} strokeLinecap="round" />
+            <rect x={seg.x1} y={y + 2} width={w} height={rowHeight - 4} fill="transparent" style={{ cursor: 'pointer' }}>
+              <title>{`${cfg.label}\n${fmtTimeFull(seg.start_time)} → ${fmtTimeFull(seg.end_time)}\nDuration: ${fmtDurShort(seg.duration_hours)}${seg.location ? `\nLocation: ${seg.location}` : ''}${seg.remarks ? `\n${seg.remarks}` : ''}`}</title>
             </rect>
           </g>
         )
@@ -283,64 +284,307 @@ function OfficialGrid({ events, logDate }) {
 
       {/* Vertical connectors */}
       {verticals.map((v, i) => (
-        <line
-          key={`v${i}`}
-          x1={v.x} y1={v.yTop}
-          x2={v.x} y2={v.yBot}
-          stroke="#1f2937"
-          strokeWidth={2}
-        />
+        <line key={`v${i}`} x1={v.x} y1={v.yTop} x2={v.x} y2={v.yBot} stroke="#374151" strokeWidth={2} />
       ))}
     </svg>
   )
 }
 
-
-function EventsTable({ events }) {
+function ModernTimeline({ events }) {
   if (!events.length) return null
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full text-xs">
-        <thead>
-          <tr className="border-b border-gray-300 text-gray-500 uppercase tracking-wider">
-            <th className="text-left py-1.5 pr-3 font-semibold">Status</th>
-            <th className="text-left py-1.5 pr-3 font-semibold">From</th>
-            <th className="text-left py-1.5 pr-3 font-semibold">To</th>
-            <th className="text-left py-1.5 pr-3 font-semibold">Duration</th>
-            <th className="text-left py-1.5 pr-3 font-semibold">Location</th>
-            <th className="text-left py-1.5 font-semibold">Remarks</th>
-          </tr>
-        </thead>
-        <tbody>
-          {events.map((ev, i) => {
-            const cfg = STATUSES.find(s => s.key === ev.status) || STATUSES[0]
-            return (
-              <tr key={ev.id || i} className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="py-1 pr-3">
-                  <span
-                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white"
-                    style={{ backgroundColor: cfg.color }}
-                  >
-                    {cfg.num}. {cfg.short}
-                  </span>
-                </td>
-                <td className="py-1 pr-3 text-gray-700 font-mono">{fmtTimeFull(ev.start_time)}</td>
-                <td className="py-1 pr-3 text-gray-700 font-mono">{fmtTimeFull(ev.end_time)}</td>
-                <td className="py-1 pr-3 text-gray-700 font-semibold">{fmtDurShort(ev.duration_hours)}</td>
-                <td className="py-1 pr-3 text-gray-600 max-w-[200px] truncate">{ev.location}</td>
-                <td className="py-1 text-gray-500 max-w-[280px] truncate">{ev.remarks}</td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+    <div className="space-y-1.5">
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Activity Timeline</p>
+      <div className="grid gap-1.5">
+        {events.map((ev, i) => {
+          const idx = STATUS_INDEX[ev.status] ?? 0
+          const cfg = STATUSES[idx]
+          const isSmall = (ev.duration_hours || 0) < 0.1
+          if (isSmall) return null
+
+          return (
+            <div key={ev.id || i} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition text-xs">
+              <span className="inline-flex items-center justify-center w-7 h-7 rounded-full text-white text-[10px] font-bold shrink-0" style={{ backgroundColor: cfg.color }}>
+                {cfg.short}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-gray-800">{cfg.label}</span>
+                  <span className="text-gray-400">·</span>
+                  <span className="font-medium text-gray-600">{fmtDurShort(ev.duration_hours)}</span>
+                </div>
+                {ev.location && <p className="text-gray-500 truncate">{ev.location}</p>}
+              </div>
+              <div className="text-right shrink-0 text-gray-500 font-mono">
+                <p>{fmtTimeShort(ev.start_time)}</p>
+                <p>{fmtTimeShort(ev.end_time)}</p>
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
 
-function fmtTimeFull(isoStr) {
-  if (!isoStr) return ''
-  const d = new Date(isoStr)
-  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+
+/* ════════════════════════════════════════════════════════════════
+   OFFICIAL VIEW — matches the FMCSA Daily Driver's Log form
+   ════════════════════════════════════════════════════════════════ */
+function OfficialDailyLog({ day }) {
+  const dateParts = day.log_date ? day.log_date.split('-') : ['', '', '']
+  const rowTotals = [
+    day.total_off_duty_hours || 0,
+    day.total_sleeper_hours || 0,
+    day.total_driving_hours || 0,
+    day.total_on_duty_hours || 0,
+  ]
+  const grandTotal = rowTotals.reduce((a, b) => a + b, 0)
+
+  return (
+    <div className="border-2 border-black bg-white overflow-hidden">
+      {/* Title */}
+      <div className="border-b-2 border-black px-4 py-2 flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <p className="text-lg font-black tracking-tight">Drivers Daily Log</p>
+          <p className="text-[10px] text-gray-500">(24 hours)</p>
+        </div>
+        <div className="flex gap-6 items-end text-sm">
+          <DateField value={dateParts[1]} label="month" />
+          <span className="font-bold">/</span>
+          <DateField value={dateParts[2]} label="day" />
+          <span className="font-bold">/</span>
+          <DateField value={dateParts[0]} label="year" />
+        </div>
+        <div className="text-[9px] text-gray-500 text-right">
+          <p>Original — File at home terminal.</p>
+          <p>Duplicate — Driver retains in his/her possession for 8 days.</p>
+        </div>
+      </div>
+
+      {/* From / To */}
+      <div className="grid grid-cols-2 border-b border-black">
+        <OfficialField label="From:" value={day.start_location || '—'} />
+        <OfficialField label="To:" value={day.end_location || '—'} />
+      </div>
+
+      {/* Miles, Carrier */}
+      <div className="grid grid-cols-2 md:grid-cols-4 border-b border-black">
+        <OfficialBox label="Total Miles Driving Today" value={day.miles_driven?.toFixed(0) || '0'} />
+        <OfficialBox label="Total Mileage Today" value={day.miles_driven?.toFixed(0) || '0'} />
+        <OfficialBox label="Name of Carrier or Carriers" value="Trip Planner ELD" span2 />
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 border-b border-black">
+        <OfficialBox label="Truck/Tractor and Trailer Numbers" value="—" />
+        <OfficialBox label="License Plate(s)/State" value="—" />
+        <OfficialBox label="Main Office Address" value="—" />
+        <OfficialBox label="Home Terminal Address" value="—" />
+      </div>
+
+      {/* Grid */}
+      <div className="border-b-2 border-black overflow-x-auto">
+        <OfficialGrid events={day.events || []} logDate={day.log_date} rowTotals={rowTotals} />
+      </div>
+
+      {/* Remarks */}
+      <div className="border-b border-black">
+        <div className="px-3 py-1 border-b border-black bg-gray-50">
+          <p className="text-xs font-bold">Remarks</p>
+        </div>
+        <div className="px-3 py-2 min-h-[50px]">
+          {events_to_remarks(day.events || [])}
+        </div>
+      </div>
+
+      {/* Shipping */}
+      <div className="border-b border-black px-3 py-2">
+        <p className="text-[10px] font-bold mb-0.5">Shipping Documents:</p>
+        <div className="grid grid-cols-2 gap-2 text-[10px]">
+          <div><span className="text-gray-500">DVL or Manifest No. — </span><span className="font-medium">N/A</span></div>
+          <div><span className="text-gray-500">Shipper & Commodity — </span><span className="font-medium">General Freight</span></div>
+        </div>
+      </div>
+
+      {/* Recap */}
+      <div className="px-3 py-2">
+        <p className="text-[10px] font-bold mb-1">Recap:</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px]">
+          <RecapBox label="On duty hours today" value={fmtDur((day.total_driving_hours || 0) + (day.total_on_duty_hours || 0))} />
+          <RecapBox label="Total hours (lines 3 & 4)" value={fmtDur((day.total_driving_hours || 0) + (day.total_on_duty_hours || 0))} />
+          <RecapBox label="70 Hours / 8 Day" value={`Driving: ${fmtDur(day.total_driving_hours || 0)}`} />
+          <RecapBox label="Total (24h)" value={fmtDur(grandTotal)} bold />
+        </div>
+        <p className="text-[8px] text-gray-400 mt-1 italic">
+          Enter name of place you reported and where released from work and when and where each change of duty occurred. Use time standard of home terminal.
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function DateField({ value, label }) {
+  return (
+    <div className="text-center border-b border-black px-3">
+      <span className="font-bold">{value}</span>
+      <p className="text-[8px] text-gray-400">({label})</p>
+    </div>
+  )
+}
+
+function OfficialField({ label, value }) {
+  return (
+    <div className="px-3 py-1.5 border-r border-black last:border-r-0">
+      <span className="text-[10px] font-bold text-gray-600">{label} </span>
+      <span className="text-sm font-semibold">{value}</span>
+    </div>
+  )
+}
+
+function OfficialBox({ label, value, span2 }) {
+  return (
+    <div className={`px-3 py-1 border-r border-black last:border-r-0 ${span2 ? 'col-span-2' : ''}`}>
+      <p className="text-sm font-semibold">{value}</p>
+      <p className="text-[8px] text-gray-500 uppercase">{label}</p>
+    </div>
+  )
+}
+
+function RecapBox({ label, value, bold }) {
+  return (
+    <div className="border border-black p-1.5">
+      <p className="text-gray-500 font-medium">{label}</p>
+      <p className={`text-sm ${bold ? 'font-black' : 'font-bold'}`}>{value}</p>
+    </div>
+  )
+}
+
+function events_to_remarks(events) {
+  const items = events
+    .filter(ev => ev.remarks && ev.remarks.trim())
+    .map((ev, i) => (
+      <p key={i} className="text-[10px] text-gray-700">
+        <span className="font-semibold">{fmtTimeFull(ev.start_time)}</span> — {ev.remarks}
+      </p>
+    ))
+
+  if (items.length === 0) return <p className="text-[10px] text-gray-400 italic">No remarks for this day.</p>
+  return <div className="space-y-0.5">{items}</div>
+}
+
+
+/* ─── Official Grid (FMCSA-style) ─── */
+function OfficialGrid({ events, logDate, rowTotals }) {
+  const gridWidth = 960
+  const rowHeight = 40
+  const labelWidth = 100
+  const totalColWidth = 50
+  const totalWidth = labelWidth + gridWidth + totalColWidth
+  const hourWidth = gridWidth / 24
+  const OFFICIAL_LABELS = ['Off Duty', 'Sleeper\nBerth', 'Driving', 'On Duty\n(not driving)']
+
+  const dayStart = new Date(`${logDate}T00:00:00Z`).getTime()
+  const dayEnd = dayStart + 24 * 3600 * 1000
+
+  function timeToX(isoStr) {
+    const t = new Date(isoStr).getTime()
+    const clamped = Math.max(dayStart, Math.min(dayEnd, t))
+    return labelWidth + ((clamped - dayStart) / (dayEnd - dayStart)) * gridWidth
+  }
+
+  const segments = events.map(ev => {
+    const rowIdx = STATUS_INDEX[ev.status] ?? 0
+    return { ...ev, rowIdx, x1: timeToX(ev.start_time), x2: timeToX(ev.end_time) }
+  })
+
+  const verticals = []
+  for (let i = 1; i < segments.length; i++) {
+    const prev = segments[i - 1], cur = segments[i]
+    if (prev.rowIdx !== cur.rowIdx) {
+      verticals.push({
+        x: cur.x1,
+        yTop: Math.min(prev.rowIdx, cur.rowIdx) * rowHeight + rowHeight / 2,
+        yBot: Math.max(prev.rowIdx, cur.rowIdx) * rowHeight + rowHeight / 2,
+      })
+    }
+  }
+
+  const svgHeight = 4 * rowHeight
+  const headerH = 24
+
+  return (
+    <svg viewBox={`0 0 ${totalWidth} ${svgHeight + headerH}`} className="w-full min-w-[750px]" style={{ fontFamily: "'Courier New', Courier, monospace" }}>
+      {/* Header */}
+      <rect x={labelWidth} y={0} width={gridWidth + totalColWidth} height={headerH} fill="#1f2937" />
+      <text x={labelWidth + 2} y={10} fontSize="7" fontWeight="700" fill="white">Mid-</text>
+      <text x={labelWidth + 2} y={19} fontSize="7" fontWeight="700" fill="white">night</text>
+      {[1,2,3,4,5,6,7,8,9,10,11].map(h => (
+        <text key={`a${h}`} x={labelWidth + h * hourWidth + hourWidth / 2} y={15} textAnchor="middle" fontSize="9" fontWeight="700" fill="white">{h}</text>
+      ))}
+      <text x={labelWidth + 12 * hourWidth + hourWidth / 2} y={15} textAnchor="middle" fontSize="8" fontWeight="700" fill="white">Noon</text>
+      {[1,2,3,4,5,6,7,8,9,10,11].map(h => (
+        <text key={`p${h}`} x={labelWidth + (12 + h) * hourWidth + hourWidth / 2} y={15} textAnchor="middle" fontSize="9" fontWeight="700" fill="white">{h}</text>
+      ))}
+      <text x={labelWidth + gridWidth - 2} y={10} textAnchor="end" fontSize="7" fontWeight="700" fill="white">Mid-</text>
+      <text x={labelWidth + gridWidth - 2} y={19} textAnchor="end" fontSize="7" fontWeight="700" fill="white">night</text>
+      <text x={labelWidth + gridWidth + totalColWidth / 2} y={10} textAnchor="middle" fontSize="7" fontWeight="700" fill="white">Total</text>
+      <text x={labelWidth + gridWidth + totalColWidth / 2} y={19} textAnchor="middle" fontSize="7" fontWeight="700" fill="white">Hours</text>
+
+      {/* Rows */}
+      {OFFICIAL_LABELS.map((lbl, i) => {
+        const y = headerH + i * rowHeight
+        const lines = lbl.split('\n')
+        return (
+          <g key={i}>
+            <rect x={0} y={y} width={labelWidth} height={rowHeight} fill="#fff" stroke="#000" strokeWidth={0.5} />
+            <rect x={labelWidth} y={y} width={gridWidth} height={rowHeight} fill="#fff" stroke="#000" strokeWidth={0.5} />
+            <rect x={labelWidth + gridWidth} y={y} width={totalColWidth} height={rowHeight} fill="#fff" stroke="#000" strokeWidth={0.5} />
+
+            <text x={8} y={y + (lines.length > 1 ? 14 : rowHeight / 2 + 1)} fontSize="9" fontWeight="700" fill="#1f2937" dominantBaseline={lines.length > 1 ? 'auto' : 'middle'}>
+              {i + 1}. {lines[0]}
+            </text>
+            {lines.length > 1 && <text x={18} y={y + 26} fontSize="9" fontWeight="700" fill="#1f2937">{lines[1]}</text>}
+
+            {/* Tick marks */}
+            {Array.from({ length: 24 }, (_, h) => (
+              <g key={h}>
+                <line x1={labelWidth + h * hourWidth} y1={y} x2={labelWidth + h * hourWidth} y2={y + rowHeight} stroke="#000" strokeWidth={h % 6 === 0 ? 1.5 : 0.5} />
+                {[1, 2, 3].map(q => {
+                  const tx = labelWidth + h * hourWidth + (q / 4) * hourWidth
+                  const tickLen = q === 2 ? rowHeight * 0.5 : rowHeight * 0.3
+                  return <line key={q} x1={tx} y1={y + rowHeight - tickLen} x2={tx} y2={y + rowHeight} stroke="#000" strokeWidth={0.3} />
+                })}
+              </g>
+            ))}
+            <line x1={labelWidth + gridWidth} y1={y} x2={labelWidth + gridWidth} y2={y + rowHeight} stroke="#000" strokeWidth={1.5} />
+
+            <text x={labelWidth + gridWidth + totalColWidth / 2} y={y + rowHeight / 2 + 1} textAnchor="middle" dominantBaseline="middle" fontSize="11" fontWeight="700" fill="#1f2937">
+              {fmtDur(rowTotals[i])}
+            </text>
+          </g>
+        )
+      })}
+
+      {/* Status lines */}
+      {segments.map((seg, i) => {
+        const y = headerH + seg.rowIdx * rowHeight
+        const w = Math.max(seg.x2 - seg.x1, 1)
+        return (
+          <g key={i}>
+            <line x1={seg.x1} y1={y + rowHeight / 2} x2={seg.x1 + w} y2={y + rowHeight / 2} stroke="#000" strokeWidth={3} />
+            <rect x={seg.x1} y={y + 2} width={w} height={rowHeight - 4} fill="transparent" style={{ cursor: 'pointer' }}>
+              <title>{`${STATUSES[seg.rowIdx].label}\n${fmtTimeFull(seg.start_time)} → ${fmtTimeFull(seg.end_time)}\nDuration: ${fmtDurShort(seg.duration_hours)}${seg.location ? `\nLocation: ${seg.location}` : ''}${seg.remarks ? `\n${seg.remarks}` : ''}`}</title>
+            </rect>
+          </g>
+        )
+      })}
+
+      {/* Vertical connectors */}
+      {verticals.map((v, i) => (
+        <line key={`v${i}`} x1={v.x} y1={headerH + v.yTop} x2={v.x} y2={headerH + v.yBot} stroke="#000" strokeWidth={3} />
+      ))}
+
+      <rect x={labelWidth} y={headerH} width={gridWidth} height={svgHeight} fill="none" stroke="#000" strokeWidth={2} />
+    </svg>
+  )
 }
